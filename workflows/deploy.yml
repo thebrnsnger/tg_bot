@@ -28,9 +28,9 @@ jobs:
         git pull
         go mod tidy
         # Компилируем main.go (предполагается, что Go уже установлен на сервере)
-        go build -o tg_bot main.go
-        kill $(cat /root/tg_bot/bot.pid) 2>/dev/null || true
-        nohup ./tg_bot > bot.log 2>&1 & echo $! >| bot.pid
+        go build -o tgbot main.go
+        kill $(cat /root/tgbot/bot.pid) 2>/dev/null || true
+        nohup ./tgbot > bot.log 2>&1 & echo $! >| bot.pid
         
         # Если нужно перезапустить сервис (пример для systemd)
         # sudo systemctl restart tgbot.service
