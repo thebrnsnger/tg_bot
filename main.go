@@ -119,8 +119,12 @@ func main() {
 		switch {
 		case strings.HasPrefix(text, "/add "):
 			task := strings.TrimPrefix(text, "/add ")
-			item := todoLists[userID].AddItem(task, userID)
-			response = fmt.Sprintf("Задача добавлена: %s", item.Text)
+			if task == "" {
+				response = "Используйте: /add <текст задачи>"
+			} else {
+				item := todoLists[userID].AddItem(task, userID)
+				response = fmt.Sprintf("Задача добавлена: %s", item.Text)
+			}
 
 		case strings.HasPrefix(text, "/remove "):
 			idStr := strings.TrimPrefix(text, "/remove ")
@@ -154,6 +158,9 @@ func main() {
 /toggle <id> - изменить статус задачи
 /list - показать список задач
 /help - показать это сообщение`
+
+		case text == "/add":
+			response = "Используйте: /add <текст задачи>"
 
 		default:
 			response = "Используйте /help для просмотра доступных команд"
