@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -71,7 +72,7 @@ func (tl *TodoList) ListItems() string {
 	defer tl.mu.Unlock()
 
 	if len(tl.Items) == 0 {
-		return "Список задач пуст"
+		return "📝 Список задач пуст"
 	}
 
 	var result strings.Builder
@@ -97,6 +98,7 @@ func main() {
 		log.Panic(err)
 	}
 
+	bot.Debug = true
 	log.Printf("Бот авторизован как %s", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
@@ -108,6 +110,9 @@ func main() {
 			continue
 		}
 
+		// Добавляем задержку для предотвращения флуда
+		time.Sleep(500 * time.Millisecond)
+
 		userID := update.Message.From.ID
 		if _, exists := todoLists[userID]; !exists {
 			todoLists[userID] = &TodoList{}
@@ -116,6 +121,9 @@ func main() {
 		text := update.Message.Text
 		var response string
 
+		// Логируем входящие сообщения
+		log.Printf("[%s] %s", update.Message.From.UserName, text)
+
 		switch {
 		case strings.HasPrefix(text, "/add "):
 			task := strings.TrimPrefix(text, "/add ")
@@ -123,50 +131,53 @@ func main() {
 				response = "Используйте: /add <текст задачи>"
 			} else {
 				item := todoLists[userID].AddItem(task, userID)
-				response = fmt.Sprintf("Задача добавлена: %s", item.Text)
+				response = fmt.Sprintf("✅ Задача добавлена: %s", item.Text)
 			}
+
+		case text == "/add":
+			response = "Используйте: /add <текст задачи>"
 
 		case strings.HasPrefix(text, "/remove "):
 			idStr := strings.TrimPrefix(text, "/remove ")
 			id, err := strconv.Atoi(idStr)
 			if err != nil {
-				response = "Неверный ID задачи"
+				response = "❌ Неверный ID задачи"
 			} else if todoLists[userID].RemoveItem(id) {
-				response = "Задача удалена"
+				response = "✅ Задача удалена"
 			} else {
-				response = "Задача не найдена"
+				response = "❌ Задача не найдена"
 			}
 
 		case strings.HasPrefix(text, "/toggle "):
 			idStr := strings.TrimPrefix(text, "/toggle ")
 			id, err := strconv.Atoi(idStr)
 			if err != nil {
-				response = "Неверный ID задачи"
+				response = "❌ Неверный ID задачи"
 			} else if todoLists[userID].ToggleItem(id) {
-				response = "Статус задачи изменен"
+				response = "✅ Статус задачи изменен"
 			} else {
-				response = "Задача не найдена"
+				response = "❌ Задача не найдена"
 			}
 
 		case text == "/list":
 			response = todoLists[userID].ListItems()
 
 		case text == "/help":
-			response = `Доступные команды:
+			response = `📋 Доступные команды:
 /add <текст> - добавить задачу
 /remove <id> - удалить задачу
 /toggle <id> - изменить статус задачи
 /list - показать список задач
 /help - показать это сообщение`
 
-		case text == "/add":
-			response = "Используйте: /add <текст задачи>"
-
 		default:
 			response = "Используйте /help для просмотра доступных команд"
 		}
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
-		bot.Send(msg)
+		msg.ParseMode = "HTML"
+		if _, err := bot.Send(msg); err != nil {
+			log.Printf("Ошибка отправки сообщения: %v", err)
+		}
 	}
 } 
