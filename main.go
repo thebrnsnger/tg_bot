@@ -1,3 +1,4 @@
+go
 package main
 
 import (
@@ -14,35 +15,39 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type ClaudeRequest struct {
-	Model     string    `json:"model"`
-	Messages  []Message `json:"messages"`
-	MaxTokens int       `json:"max_tokens"`
+type DeepseekRequest struct {
+	Model    string            `json:"model"`
+	Messages []DeepseekMessage `json:"messages"`
 }
 
-type Message struct {
+type DeepseekMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-type ClaudeResponse struct {
-	Content []struct {
-		Text string `json:"text"`
-	} `json:"content"`
+type DeepseekResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
 }
 
-func callClaudeAPI(apiKey, userMessage string) (string, error) {
-	url := "https://api.anthropic.com/v1/messages"
+func callDeepseekAPI(apiKey, userMessage string) (string, error) {
+	url := "https://api.deepseek.com/v1/chat/completions"
 
-	requestBody := ClaudeRequest{
-		Model: "claude-3-haiku-20240307",
-		Messages: []Message{
+	requestBody := DeepseekRequest{
+		Model: "deepseek-chat",
+		Messages: []DeepseekMessage{
+			{
+				Role:    "system",
+				Content: "You are a helpful assistant. Respond in the same language as the user's message.",
+			},
 			{
 				Role:    "user",
 				Content: userMessage,
 			},
 		},
-		MaxTokens: 1000,
 	}
 
 	jsonData, err := json.Marshal(requestBody)
@@ -56,8 +61,7 @@ func callClaudeAPI(apiKey, userMessage string) (string, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -75,13 +79,13 @@ func callClaudeAPI(apiKey, userMessage string) (string, error) {
 		return "", fmt.Errorf("API error: %s", string(body))
 	}
 
-	var claudeResp ClaudeResponse
-	if err := json.Unmarshal(body, &claudeResp); err != nil {
+	var deepseekResp DeepseekResponse
+	if err := json.Unmarshal(body, &deepseekResp); err != nil {
 		return "", err
 	}
 
-	if len(claudeResp.Content) > 0 {
-		return claudeResp.Content[0].Text, nil
+	if len(deepseekResp.Choices) > 0 {
+		return deepseekResp.Choices[0].Message.Content, nil
 	}
 
 	return "Извините, не удалось получить ответ", nil
@@ -108,7 +112,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	bot.Debug = true
+	bot.Debug = false
 	log.Printf("Бот авторизован как %s", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
@@ -129,25 +133,40 @@ func main() {
 
 		switch text {
 		case "/start":
-			response = "Привет! Я ИИ-бот. Задайте мне любой вопрос, и я постараюсь помочь!"
+			response = "Привет! Я ИИ-бот на базе Deepseek. Задайте мне любой вопрос!"
 
 		case "/help":
-			response = "🤖 Я ИИ-ассистент!\n\nПросто напишите мне любое сообщение, и я отвечу.\n\nКоманды:\n/start - начать\n/help - помощь"
+			response = `🤖 Я ИИ-ассистент на базе Deepseek!
+
+Просто напишите мне любое сообщение, и я отвечу.
+Я могу помочь с:
+• Программированием
+• Математикой
+• Переводами
+• Общими вопросами
+
+Команды:
+/start - начать
+/help - помощь`
 
 		default:
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "⏳ Думаю...")
-			bot.Send(msg)
+			thinkingMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "⏳ Думаю...")
+			sentMsg, _ := bot.Send(thinkingMsg)
 
-			aiResponse, err := callClaudeAPI(apiKey, text)
+			aiResponse, err := callDeepseekAPI(apiKey, text)
 			if err != nil {
 				log.Printf("Ошибка API: %v", err)
-				response = "Извините, произошла ошибка при обработке вашего запроса."
+				response = "Извините, произошла ошибка при обработке запроса."
 			} else {
 				response = aiResponse
 			}
+
+			deleteMsg := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, sentMsg.MessageID)
+			bot.Send(deleteMsg)
 		}
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
+		msg.ParseMode = "Markdown"
 		
 		if len(response) > 4096 {
 			for i := 0; i < len(response); i += 4096 {
@@ -156,6 +175,7 @@ func main() {
 					end = len(response)
 				}
 				partMsg := tgbotapi.NewMessage(update.Message.Chat.ID, response[i:end])
+				partMsg.ParseMode = "Markdown"
 				bot.Send(partMsg)
 				time.Sleep(100 * time.Millisecond)
 			}
