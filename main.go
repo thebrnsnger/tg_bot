@@ -16,9 +16,9 @@ import (
 )
 
 type ClaudeRequest struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-	MaxTokens int      `json:"max_tokens"`
+	Model     string    `json:"model"`
+	Messages  []Message `json:"messages"`
+	MaxTokens int       `json:"max_tokens"`
 }
 
 type Message struct {
@@ -34,7 +34,7 @@ type ClaudeResponse struct {
 
 func callClaudeAPI(apiKey, userMessage string) (string, error) {
 	url := "https://api.anthropic.com/v1/messages"
-	
+
 	requestBody := ClaudeRequest{
 		Model: "claude-3-haiku-20240307",
 		Messages: []Message{
@@ -123,7 +123,7 @@ func main() {
 
 		userID := update.Message.From.ID
 		text := update.Message.Text
-		
+
 		log.Printf("[%s] %s", update.Message.From.UserName, text)
 
 		var response string
@@ -131,7 +131,7 @@ func main() {
 		switch {
 		case text == "/start":
 			response = "Привет! Я ИИ-бот. Задайте мне любой вопрос, и я постараюсь помочь!"
-		
+
 		case text == "/help":
 			response = `🤖 Я ИИ-ассистент!
 			
@@ -161,14 +161,11 @@ func main() {
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
 		msg.ParseMode = "Markdown"
-		
+
 		if len(response) > 4096 {
-			for i := 0; i < len(response); i += 4096 {
-				end := i + 4096
-				if end > len(response) {
-					end = len(response)
-				}
-				partMsg := tgbotapi.NewMessage(update.Message.Chat.ID, response[i:end])
+			chunks := splitText(response, 4096)
+			for _, chunk := range chunks {
+				partMsg := tgbotapi.NewMessage(update.Message.Chat.ID, chunk)
 				partMsg.ParseMode = "Markdown"
 				bot.Send(partMsg)
 				time.Sleep(100 * time.Millisecond)
@@ -176,7 +173,19 @@ func main() {
 		} else {
 			bot.Send(msg)
 		}
-		
+
 		log.Printf("Ответ отправлен пользователю %d", userID)
 	}
+}
+
+func splitText(text string, maxLen int) []string {
+	var chunks []string
+	for i := 0; i < len(text); i += maxLen {
+		end := i + maxLen
+		if end > len(text) {
+			end = len(text)
+		}
+		chunks = append(chunks, text[i:end])
+	}
+	return chunks
 }
