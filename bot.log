@@ -1,8 +1,1 @@
-2025/05/31 04:32:16 parse "https://api.telegram.org/botTELEGRAM_BOT_TOKEN=8132756886:AAFlHUOmmKl7JpW2LzdFMRoNmRGUKEy4JX4\r\nCHUTES_API_TOKEN=cpk_477edfd9ad7747d39d34624635dd0fe9.a853815c3b0b50d1b620b00beb3da6cf.yLbsF8ZXW89vT9nUikh9MUCk42ul89Mu/getMe": net/url: invalid control character in URL
-panic: parse "https://api.telegram.org/botTELEGRAM_BOT_TOKEN=8132756886:AAFlHUOmmKl7JpW2LzdFMRoNmRGUKEy4JX4\r\nCHUTES_API_TOKEN=cpk_477edfd9ad7747d39d34624635dd0fe9.a853815c3b0b50d1b620b00beb3da6cf.yLbsF8ZXW89vT9nUikh9MUCk42ul89Mu/getMe": net/url: invalid control character in URL
-
-goroutine 1 [running]:
-log.Panic({0xc0000a1ce0?, 0xba?, 0x6b498a?})
-	/usr/lib/go-1.18/src/log/log.go:385 +0x65
-main.main()
-	/root/tg_bot/main.go:97 +0x13a
+2025/05/31 04:41:04 Ошибка загрузки .env файла
