@@ -1,13 +1,17 @@
-2025/05/31 05:15:19 Бот авторизован как DSlanguageAI_bot
-2025/05/31 05:15:19 Endpoint: getUpdates, params: map[allowed_updates:null timeout:60]
-2025/05/31 05:15:20 Endpoint: getUpdates, response: {"ok":true,"result":[{"update_id":407164492,
-"message":{"message_id":87,"from":{"id":934707634,"is_bot":false,"first_name":"Daren Krystin","username":"Triumf_ykt","language_code":"ru"},"chat":{"id":934707634,"first_name":"Daren Krystin","username":"Triumf_ykt","type":"private"},"date":1748668495,"text":"/start","entities":[{"offset":0,"length":6,"type":"bot_command"}]}}]}
-2025/05/31 05:15:20 Endpoint: getUpdates, params: map[allowed_updates:null offset:407164493 timeout:60]
-2025/05/31 05:15:20 [Triumf_ykt] /start
-2025/05/31 05:15:20 Endpoint: sendMessage, params: map[chat_id:934707634 entities:null text:📋 Доступные команды:
+2025/05/31 05:16:20 Бот авторизован как DSlanguageAI_bot
+2025/05/31 05:16:20 Endpoint: getUpdates, params: map[allowed_updates:null timeout:60]
+2025/05/31 05:16:41 Endpoint: getUpdates, response: {"ok":true,"result":[{"update_id":407164493,
+"message":{"message_id":89,"from":{"id":934707634,"is_bot":false,"first_name":"Daren Krystin","username":"Triumf_ykt","language_code":"ru"},"chat":{"id":934707634,"first_name":"Daren Krystin","username":"Triumf_ykt","type":"private"},"date":1748668601,"text":"/start","entities":[{"offset":0,"length":6,"type":"bot_command"}]}}]}
+2025/05/31 05:16:41 Endpoint: getUpdates, params: map[allowed_updates:null offset:407164494 timeout:60]
+2025/05/31 05:16:41 [Triumf_ykt] /start
+2025/05/31 05:16:41 Endpoint: sendMessage, params: map[chat_id:934707634 entities:null text:📋 Доступные команды:
 /add <текст> - добавить задачу
 /remove <id> - удалить задачу
 /toggle <id> - изменить статус задачи
 /list - показать список задач
 /help - показать это сообщение]
-2025/05/31 05:15:20 Endpoint: sendMessage, response: {"ok":true,"result":{"message_id":88,"from":{"id":8132756886,"is_bot":true,"first_name":"Deepseak","username":"DSlanguageAI_bot"},"chat":{"id":934707634,"first_name":"Daren Krystin","username":"Triumf_ykt","type":"private"},"date":1748668520,"text":"\ud83d\udccb \u0414\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u044b:\n/add <\u0442\u0435\u043a\u0441\u0442> - \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443\n/remove <id> - \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443\n/toggle <id> - \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0441\u0442\u0430\u0442\u0443\u0441 \u0437\u0430\u0434\u0430\u0447\u0438\n/list - \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u043f\u0438\u0441\u043e\u043a \u0437\u0430\u0434\u0430\u0447\n/help - \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u044d\u0442\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435","entities":[{"offset":22,"length":4,"type":"bot_command"},{"offset":53,"length":7,"type":"bot_command"},{"offset":83,"length":7,"type":"bot_command"},{"offset":121,"length":5,"type":"bot_command"},{"offset":151,"length":5,"type":"bot_command"}]}}
+2025/05/31 05:16:42 Endpoint: sendMessage, response: {"ok":true,"result":{"message_id":90,"from":{"id":8132756886,"is_bot":true,"first_name":"Deepseak","username":"DSlanguageAI_bot"},"chat":{"id":934707634,"first_name":"Daren Krystin","username":"Triumf_ykt","type":"private"},"date":1748668601,"text":"\ud83d\udccb \u0414\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u044b:\n/add <\u0442\u0435\u043a\u0441\u0442> - \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443\n/remove <id> - \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0437\u0430\u0434\u0430\u0447\u0443\n/toggle <id> - \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0441\u0442\u0430\u0442\u0443\u0441 \u0437\u0430\u0434\u0430\u0447\u0438\n/list - \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u043f\u0438\u0441\u043e\u043a \u0437\u0430\u0434\u0430\u0447\n/help - \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u044d\u0442\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435","entities":[{"offset":22,"length":4,"type":"bot_command"},{"offset":53,"length":7,"type":"bot_command"},{"offset":83,"length":7,"type":"bot_command"},{"offset":121,"length":5,"type":"bot_command"},{"offset":151,"length":5,"type":"bot_command"}]}}
+2025/05/31 05:17:31 Endpoint: getUpdates, response: {"ok":true,"result":[]}
+2025/05/31 05:17:31 Endpoint: getUpdates, params: map[allowed_updates:null offset:407164494 timeout:60]
+2025/05/31 05:18:21 Endpoint: getUpdates, response: {"ok":true,"result":[]}
+2025/05/31 05:18:21 Endpoint: getUpdates, params: map[allowed_updates:null offset:407164494 timeout:60]
