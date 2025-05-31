@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -128,23 +127,12 @@ func main() {
 
 		var response string
 
-		switch {
-		case text == "/start":
+		switch text {
+		case "/start":
 			response = "Привет! Я ИИ-бот. Задайте мне любой вопрос, и я постараюсь помочь!"
 
-		case text == "/help":
-			response = `🤖 Я ИИ-ассистент!
-			
-Просто напишите мне любое сообщение, и я отвечу.
-Можете спрашивать о чем угодно:
-• Помощь с программированием
-• Объяснение сложных тем
-• Творческие задачи
-• Общие вопросы
-
-Команды:
-/start - начать
-/help - помощь`
+		case "/help":
+			response = "🤖 Я ИИ-ассистент!\n\nПросто напишите мне любое сообщение, и я отвечу.\n\nКоманды:\n/start - начать\n/help - помощь"
 
 		default:
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "⏳ Думаю...")
@@ -160,13 +148,14 @@ func main() {
 		}
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
-		msg.ParseMode = "Markdown"
-
+		
 		if len(response) > 4096 {
-			chunks := splitText(response, 4096)
-			for _, chunk := range chunks {
-				partMsg := tgbotapi.NewMessage(update.Message.Chat.ID, chunk)
-				partMsg.ParseMode = "Markdown"
+			for i := 0; i < len(response); i += 4096 {
+				end := i + 4096
+				if end > len(response) {
+					end = len(response)
+				}
+				partMsg := tgbotapi.NewMessage(update.Message.Chat.ID, response[i:end])
 				bot.Send(partMsg)
 				time.Sleep(100 * time.Millisecond)
 			}
@@ -176,16 +165,4 @@ func main() {
 
 		log.Printf("Ответ отправлен пользователю %d", userID)
 	}
-}
-
-func splitText(text string, maxLen int) []string {
-	var chunks []string
-	for i := 0; i < len(text); i += maxLen {
-		end := i + maxLen
-		if end > len(text) {
-			end = len(text)
-		}
-		chunks = append(chunks, text[i:end])
-	}
-	return chunks
 }
