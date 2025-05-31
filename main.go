@@ -1,4 +1,3 @@
-go
 package main
 
 import (
@@ -10,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/joho/godotenv"
 )
 
 type TodoItem struct {
@@ -91,9 +92,9 @@ func main() {
 		log.Fatal("Ошибка загрузки .env файла")
 	}
 
-	botToken := os.Getenv("BOT_TOKEN")
+	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 	if botToken == "" {
-		log.Fatal("BOT_TOKEN не найден в .env файле")
+		log.Fatal("TELEGRAM_BOT_TOKEN не найден в .env файле")
 	}
 
 	bot, err := tgbotapi.NewBotAPI(botToken)
