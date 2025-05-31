@@ -1,3 +1,4 @@
+go
 package main
 
 import (
@@ -9,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type TodoItem struct {
@@ -86,11 +86,15 @@ func (tl *TodoList) ListItems() string {
 }
 
 func main() {
-	tokenBytes, err := os.ReadFile("token.txt")
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Ошибка при чтении token.txt: %v", err)
+		log.Fatal("Ошибка загрузки .env файла")
 	}
-	botToken := strings.TrimSpace(string(tokenBytes))
+
+	botToken := os.Getenv("BOT_TOKEN")
+	if botToken == "" {
+		log.Fatal("BOT_TOKEN не найден в .env файле")
+	}
 
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
@@ -109,7 +113,6 @@ func main() {
 			continue
 		}
 
-		// Добавляем задержку для предотвращения флуда
 		time.Sleep(500 * time.Millisecond)
 
 		userID := update.Message.From.ID
@@ -120,7 +123,6 @@ func main() {
 		text := update.Message.Text
 		var response string
 
-		// Логируем входящие сообщения
 		log.Printf("[%s] %s", update.Message.From.UserName, text)
 
 		switch {
@@ -161,7 +163,7 @@ func main() {
 		case text == "/list":
 			response = todoLists[userID].ListItems()
 
-		case text == "/help":
+		case text == "/help" || text == "/start":
 			response = `📋 Доступные команды:
 /add <текст> - добавить задачу
 /remove <id> - удалить задачу
@@ -174,11 +176,8 @@ func main() {
 		}
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
-		msg.ParseMode = "HTML"
 		if _, err := bot.Send(msg); err != nil {
 			log.Printf("Ошибка отправки сообщения: %v", err)
 		}
 	}
-} 
-
-
+}
