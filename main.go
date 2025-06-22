@@ -2,67 +2,74 @@ package main
 
 import (
 	"bytes"
-	"database/sql"
+	"database/sql" // Добавлено для работы с БД
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
-	_ "github.com/mattn/go-sqlite3" // Import for SQLite driver
+	_ "github.com/mattn/go-sqlite3" // Импорт драйвера SQLite
 )
 
 const (
-	// Обновленный URL API для OpenRouter
-	APIURL = "https://openrouter.ai/api/v1/chat/completions" 
-	// Пример модели OpenRouter, выберите ту, которая соответствует вашим потребностям
-	MODEL = "mistralai/mistral-7b-instruct" 
-	DBPATH = "database/users.db"
+	// Обновленный URL API для Hugging Face Inference API с Mistral-Small-3.2-24B-Instruct-2506
+	APIURL = "https://api-inference.huggingface.co/models/mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+	// Модель, которую мы используем на Hugging Face (указывается в запросе, если API того требует)
+	// В данном случае URL уже включает модель, но константа может быть полезна для ясности или других API
+	MODEL  = "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+	DBPATH = "database/users.db" // Путь к файлу базы данных
 )
 
+// Config хранит токены API
 type Config struct {
-	TelegramBotToken string
-	OpenRouterAPIToken string // Переименовано для ясности
+	TelegramBotToken    string
+	HuggingFaceAPIToken string // Переименовано для ясности
 }
 
+// ChatMessage представляет сообщение в диалоге (роль и содержимое)
 type ChatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
+// OpenAIRequest - структура запроса, совместимая с OpenAI-подобными API
+// Hugging Face Inference API часто имитирует этот формат для chat/instruct моделей
 type OpenAIRequest struct {
-	Model       string        `json:"model"`
-	Messages    []ChatMessage `json:"messages"`
-	Stream      bool          `json:"stream"`
-	MaxTokens   int           `json:"max_tokens"`
-	Temperature float64       `json:"temperature"`
+	Model     string        `json:"model"`
+	Messages  []ChatMessage `json:"messages"`
+	Stream    bool          `json:"stream"`
+	MaxTokens int           `json:"max_tokens"`
+	// Temperature float64       `json:"temperature"` // Не все Hugging Face API поддерживают это напрямую в таком формате, но можно оставить
 }
 
+// Choice представляет один из вариантов ответа AI
 type Choice struct {
 	Message ChatMessage `json:"message"`
 }
 
+// ChatResponse - структура ответа от AI
 type ChatResponse struct {
 	Choices []Choice `json:"choices"`
 }
 
+// Bot содержит конфигурацию, API-клиенты и соединение с БД
 type Bot struct {
 	config *Config
 	api    *tgbotapi.BotAPI
-	db     *sql.DB
+	db     *sql.DB // Добавлено соединение с БД
 }
 
 func main() {
 	config := loadConfig()
 
-	if config.TelegramBotToken == "" || config.OpenRouterAPIToken == "" {
-		log.Fatal("Ошибка: Установите TELEGRAM_BOT_TOKEN и CHUTES_API_TOKEN в файле .env (CHUTES_API_TOKEN теперь используется для токена OpenRouter)")
+	if config.TelegramBotToken == "" || config.HuggingFaceAPIToken == "" {
+		log.Fatal("Ошибка: Установите TELEGRAM_BOT_TOKEN и HF_API_TOKEN в файле .env")
 	}
 
 	// Инициализация базы данных
@@ -72,7 +79,7 @@ func main() {
 	}
 	defer db.Close() // Убедитесь, что соединение с базой данных закрыто
 
-	// Инициализация бота
+	// Инициализация бота Telegram
 	api, err := tgbotapi.NewBotAPI(config.TelegramBotToken)
 	if err != nil {
 		log.Fatalf("Ошибка создания бота: %v", err)
@@ -81,7 +88,7 @@ func main() {
 	bot := &Bot{
 		config: config,
 		api:    api,
-		db:     db,
+		db:     db, // Присваиваем соединение с БД
 	}
 
 	log.Printf("Бот запущен: @%s", api.Self.UserName)
@@ -98,6 +105,7 @@ func main() {
 	}
 }
 
+// loadConfig загружает конфигурацию из переменных окружения или .env файла
 func loadConfig() *Config {
 	err := godotenv.Load()
 	if err != nil {
@@ -105,11 +113,12 @@ func loadConfig() *Config {
 	}
 
 	return &Config{
-		TelegramBotToken:   os.Getenv("TELEGRAM_BOT_TOKEN"),
-		OpenRouterAPIToken: os.Getenv("CHUTES_API_TOKEN"), // Используем CHUTES_API_TOKEN из .env
+		TelegramBotToken:    os.Getenv("TELEGRAM_BOT_TOKEN"),
+		HuggingFaceAPIToken: os.Getenv("HF_API_TOKEN"), // Используем HF_API_TOKEN из .env
 	}
 }
 
+// initDB инициализирует соединение с SQLite базой данных и создает таблицу users
 func initDB() (*sql.DB, error) {
 	// Создаем папку database если её нет
 	err := os.MkdirAll("database", 0755)
@@ -134,7 +143,10 @@ func initDB() (*sql.DB, error) {
 	return db, nil
 }
 
+// setUserStyle сохраняет или обновляет стиль пользователя в БД
 func (b *Bot) setUserStyle(userID int64, style string) error {
+	// Использование UPSERT (INSERT OR REPLACE или INSERT OR IGNORE + UPDATE)
+	// Для SQLite обычно используется INSERT OR REPLACE INTO или INSERT OR IGNORE + UPDATE
 	_, err := b.db.Exec("INSERT OR IGNORE INTO users (user_id, style) VALUES (?, ?)", userID, style)
 	if err != nil {
 		return fmt.Errorf("ошибка при вставке пользователя: %w", err)
@@ -146,11 +158,12 @@ func (b *Bot) setUserStyle(userID int64, style string) error {
 	return nil
 }
 
+// getUserStyle получает стиль пользователя из БД или возвращает 'friendly' по умолчанию
 func (b *Bot) getUserStyle(userID int64) (string, error) {
 	var style string
 	err := b.db.QueryRow("SELECT style FROM users WHERE user_id = ?", userID).Scan(&style)
 	if err == sql.ErrNoRows {
-		return "friendly", nil // Стиль по умолчанию, если не найден
+		return "friendly", nil // Стиль по умолчанию, если пользователь не найден
 	}
 	if err != nil {
 		return "", fmt.Errorf("ошибка при получении стиля пользователя: %w", err)
@@ -158,8 +171,9 @@ func (b *Bot) getUserStyle(userID int64) (string, error) {
 	return style, nil
 }
 
+// sendWelcome отправляет приветственное сообщение
 func (b *Bot) sendWelcome(message *tgbotapi.Message) {
-	text := "👋 Привет! Я бот с искусственным интеллектом. Просто напиши мне любое сообщение, и я отвечу с помощью ИИ!\n\nЧтобы выбрать стиль общения, напиши /style"
+	text := "👋 Привет! Я бот с искусственным интеллектом, использующий модель Mistral Small 3.2. Просто напиши мне любое сообщение, и я отвечу!\n\nЧтобы выбрать стиль общения, напиши /style"
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
 	msg.ReplyToMessageID = message.MessageID
@@ -170,6 +184,7 @@ func (b *Bot) sendWelcome(message *tgbotapi.Message) {
 	}
 }
 
+// chooseStyle предлагает пользователю выбрать стиль общения через кнопки
 func (b *Bot) chooseStyle(message *tgbotapi.Message) {
 	keyboard := tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
@@ -180,7 +195,7 @@ func (b *Bot) chooseStyle(message *tgbotapi.Message) {
 			tgbotapi.NewKeyboardButton("Мемный 🤪"),
 		),
 	)
-	keyboard.ResizeKeyboard = true
+	keyboard.ResizeKeyboard = true // Делает клавиатуру компактной
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Выбери стиль общения:")
 	msg.ReplyMarkup = keyboard
@@ -192,6 +207,7 @@ func (b *Bot) chooseStyle(message *tgbotapi.Message) {
 	}
 }
 
+// setStyle устанавливает выбранный пользователем стиль
 func (b *Bot) setStyle(message *tgbotapi.Message) {
 	styleMapping := map[string]string{
 		"Дружелюбный 😊": "friendly",
@@ -201,7 +217,7 @@ func (b *Bot) setStyle(message *tgbotapi.Message) {
 
 	selectedStyle, ok := styleMapping[message.Text]
 	if !ok {
-		// Если текст не соответствует известной кнопке стиля, ничего не делаем или отправляем ошибку
+		// Если текст не соответствует известной кнопке стиля, ничего не делаем
 		return
 	}
 
@@ -212,7 +228,7 @@ func (b *Bot) setStyle(message *tgbotapi.Message) {
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, fmt.Sprintf("Стиль общения установлен: %s", message.Text))
-	msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+	msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true) // Удаляем клавиатуру после выбора
 	msg.ReplyToMessageID = message.MessageID
 
 	_, err = b.api.Send(msg)
@@ -221,14 +237,15 @@ func (b *Bot) setStyle(message *tgbotapi.Message) {
 	}
 }
 
+// aiChat обрабатывает текстовые сообщения и отправляет их в ИИ
 func (b *Bot) aiChat(message *tgbotapi.Message) {
 	userPrompt := strings.TrimSpace(message.Text)
 
-	// Не реагируем на выбор стиля как на чат
+	// Не реагируем на выбор стиля как на чат-запрос
 	styleButtons := []string{"Дружелюбный 😊", "Официальный 🧐", "Мемный 🤪"}
 	for _, btn := range styleButtons {
 		if userPrompt == btn {
-			b.setStyle(message)
+			b.setStyle(message) // Обрабатываем как выбор стиля
 			return
 		}
 	}
@@ -243,20 +260,22 @@ func (b *Bot) aiChat(message *tgbotapi.Message) {
 		return
 	}
 
+	// Получаем стиль пользователя из БД
 	style, err := b.getUserStyle(message.From.ID)
 	if err != nil {
 		log.Printf("Ошибка получения стиля пользователя: %v", err)
 		style = "friendly" // Возвращаемся к дружелюбному стилю по умолчанию
 	}
 
+	// Формируем системный промпт в зависимости от стиля
 	stylePrompts := map[string]string{
-		"friendly": "Отвечай дружелюбно и тепло, с эмодзи.",
-		"official": "Отвечай официально, строго и вежливо.",
-		"meme":     "Отвечай с юмором и мемами, добавляй забавные фразы.",
+		"friendly": "Ты дружелюбный и теплый ассистент, отвечаешь с использованием эмодзи.",
+		"official": "Ты официальный, строгий и вежливый ассистент. Отвечай без эмодзи.",
+		"meme":     "Ты ассистент, любящий юмор и мемы. Отвечай с забавными фразами и мемами.",
 	}
 	systemPrompt, exists := stylePrompts[style]
 	if !exists {
-		systemPrompt = stylePrompts["friendly"] // По умолчанию дружелюбный, если стиль не найден
+		systemPrompt = stylePrompts["friendly"] // По умолчанию дружелюбный
 	}
 
 	// Отправляем сообщение о том, что думаем
@@ -273,7 +292,7 @@ func (b *Bot) aiChat(message *tgbotapi.Message) {
 	if err != nil {
 		// Удаляем сообщение "Думаю..."
 		deleteMsg := tgbotapi.NewDeleteMessage(message.Chat.ID, sentMsg.MessageID)
-		b.api.Send(deleteMsg)
+		b.api.Send(deleteMsg) // Отправляем без проверки ошибки
 
 		errorMsg := tgbotapi.NewMessage(message.Chat.ID, fmt.Sprintf("Ошибка при обращении к ИИ: %v", err))
 		errorMsg.ReplyToMessageID = message.MessageID
@@ -283,27 +302,28 @@ func (b *Bot) aiChat(message *tgbotapi.Message) {
 
 	// Удаляем сообщение "Думаю..."
 	deleteMsg := tgbotapi.NewDeleteMessage(message.Chat.ID, sentMsg.MessageID)
-	b.api.Send(deleteMsg)
+	b.api.Send(deleteMsg) // Отправляем без проверки ошибки
 
 	// Отправляем ответ AI
 	responseMsg := tgbotapi.NewMessage(message.Chat.ID, aiResponse)
-	responseMsg.ParseMode = tgbotapi.ModeMarkdown // OpenRouter часто возвращает Markdown
+	responseMsg.ParseMode = tgbotapi.ModeMarkdown // Mistral часто возвращает Markdown
 	_, err = b.api.Send(responseMsg)
 	if err != nil {
 		log.Printf("Ошибка отправки ответа AI: %v", err)
 	}
 }
 
+// makeAIRequest отправляет запрос к Hugging Face Inference API для чат-моделей
 func (b *Bot) makeAIRequest(systemPrompt, userPrompt string) (string, error) {
 	reqBody := OpenAIRequest{
-		Model: MODEL,
+		Model: MODEL, // Используем константу MODEL
 		Messages: []ChatMessage{
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
 		},
-		Stream:      false,
-		MaxTokens:   1024,
-		Temperature: 0.7,
+		Stream:    false,
+		MaxTokens: 1024,
+		// Temperature: 0.7, // Опционально, не все HF API поддерживают напрямую
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -313,23 +333,23 @@ func (b *Bot) makeAIRequest(systemPrompt, userPrompt string) (string, error) {
 
 	req, err := http.NewRequest("POST", APIURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return "", fmt.Errorf("ошибка создания запроса: %w", err)
+		return "", fmt.Errorf("ошибка создания HTTP-запроса: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+b.config.OpenRouterAPIToken) // Используем OpenRouterAPIToken
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+b.config.HuggingFaceAPIToken)
+	req.Header.Set("Content-Type", "application/json") // Важно для JSON-тела
 
 	client := &http.Client{
-		Timeout: 60 * time.Second,
+		Timeout: 90 * time.Second, // Увеличиваем таймаут для больших моделей
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("ошибка выполнения HTTP запроса: %w", err)
+		return "", fmt.Errorf("ошибка выполнения HTTP-запроса: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("API вернул ошибку %d: %s", resp.StatusCode, string(body))
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -350,6 +370,7 @@ func (b *Bot) makeAIRequest(systemPrompt, userPrompt string) (string, error) {
 	return chatResp.Choices[0].Message.Content, nil
 }
 
+// handleUpdate обрабатывает входящие обновления от Telegram
 func (b *Bot) handleUpdate(update tgbotapi.Update) {
 	if update.Message == nil {
 		return
@@ -365,15 +386,22 @@ func (b *Bot) handleUpdate(update tgbotapi.Update) {
 		case "style":
 			b.chooseStyle(message)
 		default:
-			// Обработка неизвестных команд при необходимости
-			msg := tgbotapi.NewMessage(message.Chat.ID, "Неизвестная команда.")
+			msg := tgbotapi.NewMessage(message.Chat.ID, "Неизвестная команда. Используйте /start или /style.")
 			msg.ReplyToMessageID = message.MessageID
 			b.api.Send(msg)
 		}
 	} else {
 		// Обработка обычных текстовых сообщений
 		if message.Text != "" {
-			b.aiChat(message)
+			b.aiChat(message) // Вызываем функцию для обработки чата
 		}
 	}
+}
+
+// min вспомогательная функция, которая теперь не нужна, но оставлена на всякий случай
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
